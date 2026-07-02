@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local Dashboard App — probe</title>
+<style>
+  :root { --fg:#1a1a1a; --muted:#666; --line:#e3e3e0; --accent:#0F6E56; --tile:#E1F5EE; }
+  * { box-sizing:border-box; }
+  body { font-family:-apple-system,Segoe UI,Roboto,sans-serif; margin:0; color:var(--fg); background:#faf9f6; }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  header h1 { font-size:18px; font-weight:600; margin:0; }
+  main { padding:24px; max-width:1100px; margin:0 auto; }
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+  .tile { background:var(--tile); border-radius:10px; padding:16px; }
+  .tile .lab { font-size:13px; color:var(--accent); font-weight:600; }
+  .tile .val { font-size:26px; font-weight:700; margin-top:4px; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-bottom:24px; }
+  .card h2 { font-size:14px; color:var(--muted); font-weight:600; margin:0 0 12px; }
+  .filters button { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 12px; cursor:pointer; font-size:13px; }
+  .filters button.active { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .empty { color:var(--muted); padding:40px; text-align:center; border:2px dashed var(--line); border-radius:12px; }
+  label.file { cursor:pointer; border:1px solid var(--accent); color:var(--accent); border-radius:8px; padding:8px 14px; font-size:13px; font-weight:600; }
+  label.file input { display:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Local Dashboard App</h1>
+  <span style="color:var(--muted); font-size:13px;">runs entirely on this PC — no subscription, no cloud</span>
+  <label class="file" style="margin-left:auto;">Load CSV<input type="file" id="file" accept=".csv"></label>
+</header>
+<main>
+  <div id="empty" class="empty">Click <b>Load CSV</b> and pick <code>sample_sales.csv</code> (columns: Month, Region, Product, Units, Revenue).</div>
+  <div id="dash" style="display:none;">
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <h2>Revenue by month</h2>
+      <div class="filters" id="filters" style="display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap;"></div>
+      <div style="position:relative; height:260px;"><canvas id="line"></canvas></div>
+    </div>
+    <div class="row">
+      <div class="card"><h2>Revenue by region</h2><div style="position:relative;height:220px;"><canvas id="bar"></canvas></div></div>
+      <div class="card"><h2>Revenue by product</h2><div style="position:relative;height:220px;"><canvas id="pie"></canvas></div></div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const fmt = v => "$" + Math.round(v).toLocaleString();
+let charts = {};
+
+function parseCSV(text){
+  const [head, ...lines] = text.trim().split(/\r?\n/);
+  const cols = head.split(",");
+  return lines.filter(Boolean).map(l => {
+    const cells = l.split(",");
+    return Object.fromEntries(cols.map((c,i)=>[c.trim(), cells[i]]));
+  });
+}
+
+function render(rows){
+  document.getElementById("empty").style.display="none";
+  document.getElementById("dash").style.display="block";
+  const monthNames=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthKeys=[...new Set(rows.map(r=>r.Month))].sort();
+  const regions=[...new Set(rows.map(r=>r.Region))];
+  const products=[...new Set(rows.map(r=>r.Product))];
+
+  const sumBy = (pred, key="Revenue") => rows.filter(pred).reduce((a,r)=>a+Number(r[key]),0);
+  const totalRev = sumBy(()=>true);
+  const totalUnits = sumBy(()=>true,"Units");
+  const regTotals = Object.fromEntries(regions.map(r=>[r, sumBy(x=>x.Region===r)]));
+  const prodTotals = Object.fromEntries(products.map(p=>[p, sumBy(x=>x.Product===p)]));
+  const topRegion = Object.entries(regTotals).sort((a,b)=>b[1]-a[1])[0][0];
+
+  document.getElementById("kpis").innerHTML = [
+    ["Total revenue", fmt(totalRev)],
+    ["Total units", Math.round(totalUnits).toLocaleString()],
+    ["Avg order value", "$"+(totalRev/totalUnits).toFixed(2)],
+    ["Top region", topRegion],
+  ].map(([l,v])=>`<div class="tile"><div class="lab">${l}</div><div class="val">${v}</div></div>`).join("");
+
+  const monthly = filterRegion => monthKeys.map(m =>
+    sumBy(r => r.Month===m && (filterRegion==="All"||r.Region===filterRegion)));
+
+  const line = new Chart(document.getElementById("line"),{
+    type:"line",
+    data:{labels:monthKeys.map((m,i)=>monthNames[i]||m),
+      datasets:[{label:"Revenue",data:monthly("All"),borderColor:"#0F6E56",
+        backgroundColor:"rgba(29,158,117,.12)",fill:true,tension:.35}]},
+    options:{plugins:{legend:{display:false}},maintainAspectRatio:false,scales:{y:{ticks:{callback:fmt}}}}
+  });
+  new Chart(document.getElementById("bar"),{type:"bar",
+    data:{labels:regions,datasets:[{data:Object.values(regTotals),backgroundColor:"#378ADD"}]},
+    options:{plugins:{legend:{display:false}},maintainAspectRatio:false}});
+  new Chart(document.getElementById("pie"),{type:"pie",
+    data:{labels:products,datasets:[{data:Object.values(prodTotals),backgroundColor:["#1D9E75","#EF9F27","#D85A30","#378ADD"]}]},
+    options:{plugins:{legend:{position:"bottom"}},maintainAspectRatio:false}});
+
+  document.getElementById("filters").innerHTML =
+    ["All",...regions].map((r,i)=>`<button class="${i===0?'active':''}" data-r="${r}">${r}</button>`).join("");
+  document.querySelectorAll("#filters button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#filters button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    line.data.datasets[0].data = monthly(b.dataset.r);
+    line.update();
+  });
+}
+
+document.getElementById("file").addEventListener("change", e => {
+  const f = e.target.files[0]; if(!f) return;
+  const rdr = new FileReader();
+  rdr.onload = () => render(parseCSV(rdr.result));
+  rdr.readAsText(f);
+});
+</script>
+</body>
+</html>

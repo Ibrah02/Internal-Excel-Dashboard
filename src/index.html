@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spreadsheet Dashboard</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <h1>Spreadsheet Dashboard</h1>
+  <span class="sub">runs on this PC &mdash; no subscription, no cloud, works offline</span>
+  <label class="file-btn">Open spreadsheet<input type="file" id="fileInput" accept=".xlsx,.xls,.csv"></label>
+</header>
+
+<main>
+  <div id="empty" class="empty">
+    Click <b>Open spreadsheet</b> and choose an <code>.xlsx</code> or <code>.csv</code> file.<br>
+    The dashboard builds itself &mdash; pick which column to group by and which numbers to chart.
+  </div>
+
+  <div id="dash" style="display:none;">
+    <div class="controls">
+      <div class="field" id="sheetField" style="display:none;">
+        <label>Sheet</label>
+        <select id="sheetSelect"></select>
+      </div>
+      <div class="field">
+        <label>Group by</label>
+        <select id="dimSelect"></select>
+      </div>
+      <div class="field">
+        <label>Measure</label>
+        <div class="measures" id="measureBox"></div>
+      </div>
+      <div class="field">
+        <label>Aggregate</label>
+        <select id="aggSelect">
+          <option value="sum">Sum</option>
+          <option value="avg">Average</option>
+          <option value="count">Count rows</option>
+        </select>
+      </div>
+    </div>
+    <div id="err" class="err"></div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="card">
+      <h2>By group
+        <span class="seg" id="chartSeg">
+          <button class="on" data-type="bar">Bar</button>
+          <button data-type="line">Line</button>
+        </span>
+      </h2>
+      <div class="chart-wrap"><canvas id="mainChart" role="img" aria-label="Measure by group chart"></canvas></div>
+    </div>
+
+    <div class="grid">
+      <div class="card" id="shareCard">
+        <h2>Share of total</h2>
+        <div class="chart-wrap small"><canvas id="shareChart" role="img" aria-label="Share of total by group"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Data <span id="tableNote" style="margin-left:auto;font-weight:400;"></span></h2>
+        <div class="table-scroll"><table class="preview" id="previewTable"></table></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="../vendor/xlsx.full.min.js"></script>
+<script src="../vendor/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
