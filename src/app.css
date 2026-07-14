@@ -75,3 +75,73 @@ table.preview th { color: var(--muted); font-weight: 600; position: sticky; top:
 .table-scroll { max-height: 320px; overflow: auto; }
 .err { color: #a32d2d; font-size: 13px; margin-top: 8px; }
 @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+/* ---- Screen navigation ---- */
+.screens { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.nav-btn { border: none; background: var(--surface); padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--muted); }
+.nav-btn.on { background: var(--accent); color: #fff; }
+
+/* ---- Petty cash screen ---- */
+.pc-intro { color: var(--muted); font-size: 14px; max-width: 720px; margin: 0 0 18px; }
+.pc-head {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px; margin-bottom: 20px;
+}
+.pc-head .field input {
+  border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  font-size: 14px; background: var(--surface); min-width: 160px;
+}
+.pc-actions { display: flex; gap: 10px; margin-left: auto; align-items: flex-end; }
+.file-btn.ghost, #pcExport { margin-left: 0; }
+.file-btn.ghost { color: var(--muted); border-color: var(--line); }
+.mini-btn {
+  margin-left: auto; border: 1px solid var(--accent); color: var(--accent);
+  background: var(--surface); border-radius: 6px; padding: 3px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.tile.warn { background: #fbe9e7; }
+.tile.warn .lab, .tile.warn .val { color: #a32d2d; }
+
+table.entry { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.entry th, table.entry td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+table.entry th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+table.entry td.num, table.entry th.num { text-align: right; }
+table.entry input {
+  width: 100%; border: 1px solid transparent; border-radius: 6px;
+  padding: 5px 6px; font-size: 13px; background: transparent; color: var(--fg);
+}
+table.entry input:hover { border-color: var(--line); }
+table.entry input:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+table.entry input.cost { text-align: right; }
+table.entry select {
+  border: 1px solid transparent; border-radius: 6px; padding: 5px 6px;
+  font-size: 13px; background: transparent; color: var(--fg); cursor: pointer;
+}
+table.entry select:hover { border-color: var(--line); }
+table.entry select:focus { border-color: var(--accent); background: var(--surface); outline: none; }
+.day-sel { min-width: 68px; }
+table.entry td.lt { white-space: nowrap; font-weight: 600; }
+
+/* Quantity stepper: clear +/- buttons, still typeable for big quantities */
+.qty-step { display: inline-flex; align-items: center; gap: 3px; justify-content: flex-end; }
+.step-btn {
+  border: 1px solid var(--line); background: var(--surface); color: var(--accent);
+  width: 26px; height: 28px; border-radius: 6px; cursor: pointer;
+  font-size: 16px; line-height: 1; font-weight: 700; padding: 0; flex: none;
+}
+.step-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+.step-btn:active { transform: translateY(1px); }
+.qty-in { max-width: 46px; text-align: center; }
+.qty-in::-webkit-outer-spin-button, .qty-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.qty-in { -moz-appearance: textfield; appearance: textfield; }
+/* the entry table needs room: stack the petty cash screen into one column */
+#screen-pettycash .grid { grid-template-columns: 1fr; }
+#screen-pettycash #pcBreakdownCard { max-width: 520px; }
+.row-del {
+  border: none; background: transparent; color: var(--muted); cursor: pointer;
+  font-size: 16px; line-height: 1; padding: 2px 6px; border-radius: 6px;
+}
+.row-del:hover { background: #fbe9e7; color: #a32d2d; }
+.pc-empty { color: var(--muted); font-size: 13px; padding: 14px 6px; }
+.pc-table-card .table-scroll { max-height: 420px; }

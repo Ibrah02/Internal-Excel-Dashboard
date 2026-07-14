@@ -10,10 +10,15 @@
 <header>
   <h1>Spreadsheet Dashboard</h1>
   <span class="sub">runs on this PC &mdash; no subscription, no cloud, works offline</span>
-  <label class="file-btn">Open spreadsheet<input type="file" id="fileInput" accept=".xlsx,.xls,.csv"></label>
+  <nav class="screens" id="screenNav">
+    <button class="nav-btn on" data-screen="dashboard">Dashboard</button>
+    <button class="nav-btn" data-screen="pettycash">Petty cash</button>
+  </nav>
+  <label class="file-btn" id="openBtn">Open spreadsheet<input type="file" id="fileInput" accept=".xlsx,.xls,.csv"></label>
 </header>
 
 <main>
+  <section id="screen-dashboard" class="screen">
   <div id="empty" class="empty">
     Click <b>Open spreadsheet</b> and choose an <code>.xlsx</code> or <code>.csv</code> file.<br>
     The dashboard builds itself &mdash; pick which column to group by and which numbers to chart.
@@ -67,10 +72,46 @@
       </div>
     </div>
   </div>
+  </section>
+
+  <section id="screen-pettycash" class="screen" style="display:none;">
+    <p class="pc-intro">Record petty cash purchases for the month. The tool computes total spent, cash remaining, and the top-up to request &mdash; then export a spreadsheet to hand your manager.</p>
+
+    <div class="pc-head">
+      <div class="field">
+        <label for="pcMonth">Month</label>
+        <input type="month" id="pcMonth">
+      </div>
+      <div class="field">
+        <label for="pcCeiling">Float ceiling (UGX)</label>
+        <input type="number" id="pcCeiling" value="3000000" min="0" step="1000">
+      </div>
+      <div class="pc-actions">
+        <label class="file-btn ghost">Load month<input type="file" id="pcLoad" accept=".xlsx,.xls,.csv"></label>
+        <button type="button" class="file-btn" id="pcExport">Export .xlsx</button>
+      </div>
+    </div>
+
+    <div id="pcErr" class="err"></div>
+
+    <div class="kpis" id="pcKpis"></div>
+
+    <div class="grid">
+      <div class="card pc-table-card">
+        <h2>Purchases <button type="button" class="mini-btn" id="pcAddRow">+ Add row</button></h2>
+        <div class="table-scroll"><table class="entry" id="pcTable"></table></div>
+      </div>
+      <div class="card" id="pcBreakdownCard">
+        <h2>By category</h2>
+        <div class="chart-wrap small"><canvas id="pcChart" role="img" aria-label="Spending by category"></canvas></div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script src="../vendor/xlsx.full.min.js"></script>
 <script src="../vendor/chart.umd.min.js"></script>
 <script src="app.js"></script>
+<script src="pettycash.js"></script>
 </body>
 </html>
