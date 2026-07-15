@@ -17,6 +17,7 @@
     chartType: "bar",  // bar | line
   };
   var charts = { main: null, share: null };
+  var previewCtl = null, previewCols = null; // sort/filter/search controls for the data table
 
   // ---- Parsing -------------------------------------------------------------
   function parseCSV(text) {
@@ -200,14 +201,42 @@
     });
   }
 
+  // The data table supports sort / search / per-column filter via the shared TableTools engine.
+  // TableTools owns the header row and the visible-order; this module renders the body only.
   function renderTable(sheet) {
-    var cols = sheet.columns, rows = sheet.rows.slice(0, 100);
-    var head = "<tr>" + cols.map(function (c) { return "<th>" + esc(c) + "</th>"; }).join("") + "</tr>";
-    var body = rows.map(function (r) {
+    var t = $("previewTable");
+    if (!previewCtl) {
+      t.innerHTML = "<thead></thead><tbody></tbody>";
+      previewCtl = TableTools.attach({
+        columns: [],
+        getValue: function (i, key) { var s = state.sheets[state.sheetName]; return s ? s.rows[i][key] : ""; },
+        rowCount: function () { var s = state.sheets[state.sheetName]; return s ? s.rows.length : 0; },
+        theadEl: t.querySelector("thead"),
+        searchEl: $("previewSearch"),
+        renderBody: function () { renderPreviewBody(t.querySelector("tbody")); },
+      });
+    }
+    var columns = sheet.columns.map(function (c) {
+      var ty = state.types[c] === "number" ? "number" : (state.types[c] === "date" ? "date" : "text");
+      return { key: c, label: c, type: ty };
+    });
+    var sig = sheet.columns.join("");
+    if (previewCols !== sig) { previewCols = sig; previewCtl.reset(columns); } // new sheet: fresh columns, clear sort/filter/search
+    else previewCtl.refresh();
+  }
+
+  function renderPreviewBody(tbody) {
+    var sheet = state.sheets[state.sheetName];
+    if (!sheet) { tbody.innerHTML = ""; return; }
+    var order = previewCtl.order(), cols = sheet.columns, shown = order.slice(0, 100);
+    tbody.innerHTML = shown.map(function (i) {
+      var r = sheet.rows[i];
       return "<tr>" + cols.map(function (c) { return "<td>" + esc(r[c] instanceof Date ? labelOf(r[c]) : (r[c] === null ? "" : r[c])) + "</td>"; }).join("") + "</tr>";
     }).join("");
-    $("previewTable").innerHTML = head + body;
-    $("tableNote").textContent = sheet.rows.length > 100 ? "showing first 100 of " + fmt(sheet.rows.length) + " rows" : fmt(sheet.rows.length) + " rows";
+    var total = sheet.rows.length, matched = order.length, filtered = matched !== total;
+    $("tableNote").textContent = matched > 100
+      ? "showing 100 of " + fmt(matched) + (filtered ? " matching" : "") + " rows"
+      : fmt(matched) + (filtered ? " of " + fmt(total) : "") + " rows";
   }
 
   function destroy(key) { if (charts[key]) { charts[key].destroy(); charts[key] = null; } }
@@ -216,6 +245,7 @@
   // ---- Control wiring ------------------------------------------------------
   function buildControls() {
     var sheet = state.sheets[state.sheetName];
+    previewCols = null; // force the data table to re-init sort/filter/search for the new sheet
     state.types = detectTypes(sheet);
     var numeric = sheet.columns.filter(function (c) { return state.types[c] === "number"; });
     var categorical = sheet.columns.filter(function (c) { return state.types[c] !== "number"; });

@@ -67,7 +67,10 @@
         <div class="chart-wrap small"><canvas id="shareChart" role="img" aria-label="Share of total by group"></canvas></div>
       </div>
       <div class="card">
-        <h2>Data <span id="tableNote" style="margin-left:auto;font-weight:400;"></span></h2>
+        <h2>Data
+          <input type="search" id="previewSearch" class="tbl-search" placeholder="Search rows&hellip;">
+          <span id="tableNote" style="margin-left:auto;font-weight:400;"></span>
+        </h2>
         <div class="table-scroll"><table class="preview" id="previewTable"></table></div>
       </div>
     </div>
@@ -93,12 +96,16 @@
     </div>
 
     <div id="pcErr" class="err"></div>
+    <div id="pcFilterNote" class="pc-filter-note" style="display:none;"></div>
 
     <div class="kpis" id="pcKpis"></div>
 
     <div class="grid">
       <div class="card pc-table-card">
-        <h2>Purchases <button type="button" class="mini-btn" id="pcAddRow">+ Add row</button></h2>
+        <h2>Purchases
+          <input type="search" id="pcSearch" class="tbl-search" placeholder="Search&hellip;">
+          <button type="button" class="mini-btn" id="pcAddRow">+ Add row</button>
+        </h2>
         <div class="table-scroll"><table class="entry" id="pcTable"></table></div>
       </div>
       <div class="card" id="pcBreakdownCard">
@@ -111,6 +118,7 @@
 
 <script src="../vendor/xlsx.full.min.js"></script>
 <script src="../vendor/chart.umd.min.js"></script>
+<script src="tabletools.js"></script>
 <script src="app.js"></script>
 <script src="pettycash.js"></script>
 </body>

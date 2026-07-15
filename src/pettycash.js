@@ -16,6 +16,7 @@
     rows: [],            // [{date, item, category, unit, qty, receipt}]
   };
   var pcChart = null;
+  var pcCtl = null; // sort/filter/search controls for the purchases table
 
   function $(id) { return document.getElementById(id); }
   function num(v) { var n = parseFloat(String(v).replace(/,/g, "")); return isFinite(n) ? n : 0; }
@@ -49,31 +50,72 @@
   // A blank category reads as "NA" (Not Applicable) in the breakdown and the export.
   function catOf(r) { return (r.category || "").trim() || "NA"; }
 
-  function totals() {
-    var spent = pc.rows.reduce(function (a, r) { return a + lineTotal(r); }, 0);
-    var remaining = pc.ceiling - spent;
-    return { spent: spent, remaining: remaining, topup: spent };
+  // Rows currently visible in the table (after sort/filter/search). The on-screen KPIs and the
+  // category chart run over these so the manager can tick categories off and watch the impact on
+  // the monthly cash. The EXPORT always uses the full month (pc.rows), never this filtered view.
+  function visibleRows() {
+    if (!pcCtl) return pc.rows.slice();
+    return pcCtl.order().map(function (i) { return pc.rows[i]; });
   }
 
-  function byCategory() {
+  function totalsOf(rows) {
+    var spent = rows.reduce(function (a, r) { return a + lineTotal(r); }, 0);
+    return { spent: spent, remaining: pc.ceiling - spent, topup: spent };
+  }
+  function byCategoryOf(rows) {
     var map = {}, order = [];
-    pc.rows.forEach(function (r) {
+    rows.forEach(function (r) {
       var key = catOf(r);
       if (!(key in map)) { map[key] = 0; order.push(key); }
       map[key] += lineTotal(r);
     });
     return { order: order, map: map };
   }
+  function totals() { return totalsOf(visibleRows()); }         // on-screen analysis view
+  function byCategory() { return byCategoryOf(visibleRows()); } // on-screen analysis view
 
   // ---- Rendering ----------------------------------------------------------
   function blankRow() { return { date: "", item: "", category: "", unit: "", qty: "1", receipt: "" }; }
 
-  function renderTable() {
-    var head =
-      '<tr><th>Date</th><th>Item</th><th>Category</th>' +
-      '<th class="num">Unit cost (UGX)</th><th class="num">Qty</th>' +
-      '<th class="num">Line total</th><th>Receipt no.</th><th></th></tr>';
-    var body = pc.rows.map(function (r, i) {
+  // The purchases table supports sort / search / per-column filter via the shared TableTools engine.
+  // Row identity is the original pc.rows index (data-idx), so sorting/filtering the VIEW never
+  // disturbs the data; totals and the category chart always run over ALL rows, never the filtered view.
+  function ensurePcTable() {
+    if (pcCtl) return;
+    var t = $("pcTable");
+    t.innerHTML = "<thead></thead><tbody></tbody>";
+    pcCtl = TableTools.attach({
+      columns: [
+        { key: "date", label: "Date", type: "date" },
+        { key: "item", label: "Item", type: "text" },
+        { key: "category", label: "Category", type: "text" },
+        { key: "unit", label: "Unit cost (UGX)", type: "number" },
+        { key: "qty", label: "Qty", type: "number" },
+        { key: "linetotal", label: "Line total", type: "number" },
+        { key: "receipt", label: "Receipt no.", type: "text" },
+      ],
+      getValue: function (i, key) {
+        var r = pc.rows[i]; if (!r) return "";
+        if (key === "linetotal") return lineTotal(r);
+        if (key === "unit" || key === "qty") return num(r[key]);
+        return r[key];
+      },
+      rowCount: function () { return pc.rows.length; },
+      theadEl: t.querySelector("thead"),
+      searchEl: $("pcSearch"),
+      extraHead: "<th></th>",
+      renderBody: function () { renderPcBody(t.querySelector("tbody")); recompute(); },
+    });
+  }
+
+  function renderTable() { ensurePcTable(); pcCtl.refresh(); }
+
+  function renderPcBody(tbody) {
+    if (!pc.rows.length) { tbody.innerHTML = '<tr><td colspan="8" class="pc-empty">No purchases yet. Click <b>+ Add row</b> to record one.</td></tr>'; return; }
+    var order = pcCtl.order();
+    if (!order.length) { tbody.innerHTML = '<tr><td colspan="8" class="pc-empty">No rows match the current search or filter.</td></tr>'; return; }
+    tbody.innerHTML = order.map(function (i) {
+      var r = pc.rows[i];
       return '<tr>' +
         '<td>' + daySelect(i, r.date) + '</td>' +
         '<td><input type="text" data-idx="' + i + '" data-f="item" value="' + esc(r.item) + '" placeholder="what was bought"></td>' +
@@ -89,17 +131,15 @@
         '<td><button type="button" class="row-del" data-del="' + i + '" title="Delete row">&times;</button></td>' +
         '</tr>';
     }).join("");
-    $("pcTable").innerHTML = head + body +
-      (pc.rows.length ? "" : '<tr><td colspan="8" class="pc-empty">No purchases yet. Click <b>+ Add row</b> to record one.</td></tr>');
   }
 
   function renderKpis() {
-    var t = totals();
+    var rows = visibleRows(), t = totalsOf(rows);
     var tiles = [
       { lab: "Total spent", val: money(t.spent) },
       { lab: "Cash remaining", val: money(t.remaining), warn: t.remaining < 0 },
       { lab: "Top-up to request", val: money(t.topup) },
-      { lab: "Purchases", val: pc.rows.length.toLocaleString() },
+      { lab: "Purchases", val: rows.length.toLocaleString() },
     ];
     $("pcKpis").innerHTML = tiles.map(function (tile) {
       return '<div class="tile' + (tile.warn ? " warn" : "") + '">' +
@@ -130,12 +170,23 @@
     });
   }
 
-  function recompute() { renderKpis(); renderChart(); }
+  // When a filter/search narrows the view, make it unmistakable that the tiles and chart are an
+  // analysis subset, not the true month, so a filtered figure is never presented as the whole.
+  function updateFilterNote() {
+    var el = $("pcFilterNote"); if (!el) return;
+    var vis = visibleRows().length, all = pc.rows.length;
+    if (vis === all) { el.style.display = "none"; return; }
+    el.style.display = "block";
+    el.innerHTML = "Analysis view: showing <b>" + vis + " of " + all + "</b> purchases. " +
+      "The tiles and chart reflect the visible categories; the exported file always includes the full month.";
+  }
+
+  function recompute() { renderKpis(); renderChart(); updateFilterNote(); }
   function renderAll() { renderTable(); recompute(); }
 
   // ---- Export (the manager's presentation) --------------------------------
   function exportXlsx() {
-    var t = totals();
+    var t = totalsOf(pc.rows); // the record is always the full month, never the on-screen filter
     var monthLabel = pc.month || "(month not set)";
 
     var summary = [
@@ -148,7 +199,7 @@
       [],
       ["Category", "Spent"],
     ];
-    var bc = byCategory();
+    var bc = byCategoryOf(pc.rows);
     bc.order.forEach(function (k) { summary.push([k, bc.map[k]]); });
 
     var tx = [["Date", "Item", "Category", "Unit cost", "Quantity", "Line total", "Receipt No."]];
