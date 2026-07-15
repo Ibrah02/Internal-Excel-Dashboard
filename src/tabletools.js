@@ -129,5 +129,17 @@
     return { order: order, refresh: refresh, reset: reset, renderHead: renderHead, state: st };
   }
 
-  window.TableTools = { attach: attach };
+  // Build a .csv from an array-of-arrays and trigger a download. Offline, no dependency.
+  function csvCell(v) { v = (v === null || v === undefined) ? "" : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function downloadCSV(filename, aoa) {
+    var csv = aoa.map(function (row) { return row.map(csvCell).join(","); }).join("\r\n");
+    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }); // BOM so Excel reads UTF-8
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  }
+
+  window.TableTools = { attach: attach, downloadCSV: downloadCSV };
 })();

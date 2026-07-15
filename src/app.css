@@ -187,3 +187,27 @@ table.entry td.lt { white-space: nowrap; font-weight: 600; }
   width: 100%; font-size: 12px; border: 1px solid var(--accent); color: #fff; background: var(--accent);
   border-radius: 6px; padding: 5px 8px; cursor: pointer; font-weight: 600;
 }
+
+/* Dashboard output buttons sit at the end of the controls bar */
+.ctl-actions { display: flex; gap: 8px; margin-left: auto; align-self: flex-end; }
+.ctl-actions .file-btn { margin-left: 0; }
+
+/* ---- Print / Save-as-PDF: clean report of the on-screen view ---- */
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff; }
+  main { max-width: none; padding: 0; }
+  header { border-bottom: none; padding: 0 0 10px; }
+  header .sub, .screens, #openBtn, .controls, .pc-actions, .pc-intro,
+  .tbl-search, .tt-filter, .mini-btn, .row-del, .qty-step .step-btn,
+  .seg, .tt-panel { display: none !important; }
+  .card { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; margin-bottom: 12px; }
+  .tile, .kpis, .grid { break-inside: avoid; }
+  /* editable cells and the month/ceiling render as plain text on paper */
+  #pcMonth, #pcCeiling, table.entry input, table.entry select {
+    border: none !important; background: transparent !important; padding: 2px 4px !important;
+    -webkit-appearance: none; appearance: none; color: #000; box-shadow: none;
+  }
+  .qty-step { justify-content: flex-start; }
+  .qty-in { max-width: none; text-align: left; }
+}

@@ -46,6 +46,10 @@
           <option value="count">Count rows</option>
         </select>
       </div>
+      <div class="ctl-actions">
+        <button type="button" class="file-btn ghost" id="dashExportCsv">Export CSV</button>
+        <button type="button" class="file-btn ghost" id="dashPrint">Print / PDF</button>
+      </div>
     </div>
     <div id="err" class="err"></div>
 
@@ -91,6 +95,8 @@
       </div>
       <div class="pc-actions">
         <label class="file-btn ghost">Load month<input type="file" id="pcLoad" accept=".xlsx,.xls,.csv"></label>
+        <button type="button" class="file-btn ghost" id="pcExportCsv">Export CSV</button>
+        <button type="button" class="file-btn ghost" id="pcPrint">Print / PDF</button>
         <button type="button" class="file-btn" id="pcExport">Export .xlsx</button>
       </div>
     </div>

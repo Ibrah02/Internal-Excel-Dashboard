@@ -195,6 +195,30 @@ table.entry td.lt { white-space: nowrap; font-weight: 600; }
   border-radius: 6px; padding: 5px 8px; cursor: pointer; font-weight: 600;
 }
 
+/* Dashboard output buttons sit at the end of the controls bar */
+.ctl-actions { display: flex; gap: 8px; margin-left: auto; align-self: flex-end; }
+.ctl-actions .file-btn { margin-left: 0; }
+
+/* ---- Print / Save-as-PDF: clean report of the on-screen view ---- */
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff; }
+  main { max-width: none; padding: 0; }
+  header { border-bottom: none; padding: 0 0 10px; }
+  header .sub, .screens, #openBtn, .controls, .pc-actions, .pc-intro,
+  .tbl-search, .tt-filter, .mini-btn, .row-del, .qty-step .step-btn,
+  .seg, .tt-panel { display: none !important; }
+  .card { border: 1px solid #ccc; box-shadow: none; break-inside: avoid; margin-bottom: 12px; }
+  .tile, .kpis, .grid { break-inside: avoid; }
+  /* editable cells and the month/ceiling render as plain text on paper */
+  #pcMonth, #pcCeiling, table.entry input, table.entry select {
+    border: none !important; background: transparent !important; padding: 2px 4px !important;
+    -webkit-appearance: none; appearance: none; color: #000; box-shadow: none;
+  }
+  .qty-step { justify-content: flex-start; }
+  .qty-in { max-width: none; text-align: left; }
+}
+
 </style>
 </head>
 <body>
@@ -236,6 +260,10 @@ table.entry td.lt { white-space: nowrap; font-weight: 600; }
           <option value="avg">Average</option>
           <option value="count">Count rows</option>
         </select>
+      </div>
+      <div class="ctl-actions">
+        <button type="button" class="file-btn ghost" id="dashExportCsv">Export CSV</button>
+        <button type="button" class="file-btn ghost" id="dashPrint">Print / PDF</button>
       </div>
     </div>
     <div id="err" class="err"></div>
@@ -282,6 +310,8 @@ table.entry td.lt { white-space: nowrap; font-weight: 600; }
       </div>
       <div class="pc-actions">
         <label class="file-btn ghost">Load month<input type="file" id="pcLoad" accept=".xlsx,.xls,.csv"></label>
+        <button type="button" class="file-btn ghost" id="pcExportCsv">Export CSV</button>
+        <button type="button" class="file-btn ghost" id="pcPrint">Print / PDF</button>
         <button type="button" class="file-btn" id="pcExport">Export .xlsx</button>
       </div>
     </div>
@@ -467,7 +497,19 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     return { order: order, refresh: refresh, reset: reset, renderHead: renderHead, state: st };
   }
 
-  window.TableTools = { attach: attach };
+  // Build a .csv from an array-of-arrays and trigger a download. Offline, no dependency.
+  function csvCell(v) { v = (v === null || v === undefined) ? "" : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+  function downloadCSV(filename, aoa) {
+    var csv = aoa.map(function (row) { return row.map(csvCell).join(","); }).join("\r\n");
+    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" }); // BOM so Excel reads UTF-8
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
+  }
+
+  window.TableTools = { attach: attach, downloadCSV: downloadCSV };
 })();
 
 </script>
@@ -747,8 +789,21 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
       : '<span style="font-size:13px;color:var(--muted)">no numeric columns detected</span>';
   }
 
+  // Export the loaded data as CSV (the whole sheet, independent of the table's sort/filter/search).
+  function exportDashCsv() {
+    var sheet = state.sheets[state.sheetName];
+    if (!sheet || !sheet.rows.length) return;
+    var cols = sheet.columns;
+    var aoa = [cols].concat(sheet.rows.map(function (r) {
+      return cols.map(function (c) { return r[c] instanceof Date ? labelOf(r[c]) : (r[c] === null ? "" : r[c]); });
+    }));
+    TableTools.downloadCSV((state.sheetName || "data") + ".csv", aoa);
+  }
+
   function attachEvents() {
     $("fileInput").addEventListener("change", onFile);
+    $("dashExportCsv").addEventListener("click", exportDashCsv);
+    $("dashPrint").addEventListener("click", function () { window.print(); });
     $("sheetSelect").addEventListener("change", function (e) { state.sheetName = e.target.value; buildControls(); render(); });
     $("dimSelect").addEventListener("change", function (e) { state.dimension = e.target.value; render(); });
     $("aggSelect").addEventListener("change", function (e) { state.agg = e.target.value; render(); });
@@ -1035,6 +1090,14 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     XLSX.writeFile(wb, "PettyCash-" + safeMonth + ".xlsx");
   }
 
+  // CSV of the FULL month's transactions (the record), independent of any on-screen filter.
+  function exportCsv() {
+    var aoa = [["Date", "Item", "Category", "Unit cost", "Quantity", "Line total", "Receipt No."]];
+    pc.rows.forEach(function (r) { aoa.push([r.date, r.item, catOf(r), num(r.unit), num(r.qty), lineTotal(r), r.receipt]); });
+    var safeMonth = (pc.month || "month").replace(/[^0-9A-Za-z-]/g, "");
+    TableTools.downloadCSV("PettyCash-" + safeMonth + ".csv", aoa);
+  }
+
   // ---- Load a prior month back in -----------------------------------------
   function headerKey(h) {
     var s = String(h).toLowerCase().replace(/[^a-z]/g, "");
@@ -1205,6 +1268,8 @@ var o=[];var l=Array.isArray(e);for(f=n.s.c;f<=n.e.c;++f)s[f]=ya(f);for(var c=n.
     });
 
     $("pcExport").addEventListener("click", exportXlsx);
+    $("pcExportCsv").addEventListener("click", exportCsv);
+    $("pcPrint").addEventListener("click", function () { window.print(); });
     $("pcLoad").addEventListener("change", onLoad);
 
     // start with two blank rows so the screen isn't empty

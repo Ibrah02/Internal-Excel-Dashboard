@@ -273,8 +273,21 @@
       : '<span style="font-size:13px;color:var(--muted)">no numeric columns detected</span>';
   }
 
+  // Export the loaded data as CSV (the whole sheet, independent of the table's sort/filter/search).
+  function exportDashCsv() {
+    var sheet = state.sheets[state.sheetName];
+    if (!sheet || !sheet.rows.length) return;
+    var cols = sheet.columns;
+    var aoa = [cols].concat(sheet.rows.map(function (r) {
+      return cols.map(function (c) { return r[c] instanceof Date ? labelOf(r[c]) : (r[c] === null ? "" : r[c]); });
+    }));
+    TableTools.downloadCSV((state.sheetName || "data") + ".csv", aoa);
+  }
+
   function attachEvents() {
     $("fileInput").addEventListener("change", onFile);
+    $("dashExportCsv").addEventListener("click", exportDashCsv);
+    $("dashPrint").addEventListener("click", function () { window.print(); });
     $("sheetSelect").addEventListener("change", function (e) { state.sheetName = e.target.value; buildControls(); render(); });
     $("dimSelect").addEventListener("change", function (e) { state.dimension = e.target.value; render(); });
     $("aggSelect").addEventListener("change", function (e) { state.agg = e.target.value; render(); });

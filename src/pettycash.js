@@ -217,6 +217,14 @@
     XLSX.writeFile(wb, "PettyCash-" + safeMonth + ".xlsx");
   }
 
+  // CSV of the FULL month's transactions (the record), independent of any on-screen filter.
+  function exportCsv() {
+    var aoa = [["Date", "Item", "Category", "Unit cost", "Quantity", "Line total", "Receipt No."]];
+    pc.rows.forEach(function (r) { aoa.push([r.date, r.item, catOf(r), num(r.unit), num(r.qty), lineTotal(r), r.receipt]); });
+    var safeMonth = (pc.month || "month").replace(/[^0-9A-Za-z-]/g, "");
+    TableTools.downloadCSV("PettyCash-" + safeMonth + ".csv", aoa);
+  }
+
   // ---- Load a prior month back in -----------------------------------------
   function headerKey(h) {
     var s = String(h).toLowerCase().replace(/[^a-z]/g, "");
@@ -387,6 +395,8 @@
     });
 
     $("pcExport").addEventListener("click", exportXlsx);
+    $("pcExportCsv").addEventListener("click", exportCsv);
+    $("pcPrint").addEventListener("click", function () { window.print(); });
     $("pcLoad").addEventListener("change", onLoad);
 
     // start with two blank rows so the screen isn't empty
